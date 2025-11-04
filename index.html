@@ -4,107 +4,93 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>单词朗读者</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-  <script>
-    // 配置Tailwind自定义样式
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#4F46E5',
-            secondary: '#6B7280',
-            accent: '#EFF6FF',
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-          },
-        },
-      }
-    }
-  </script>
-  <style type="text/tailwindcss">
-    @layer utilities {
-      .content-auto {
-        content-visibility: auto;
-      }
-      .text-shadow {
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-      }
-      .control-btn {
-        @apply w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center 
-               transition-all duration-200 active:scale-90 focus:outline-none;
-      }
-      .chapter-item {
-        @apply py-2 px-3 rounded hover:bg-accent cursor-pointer transition-colors;
-      }
-      .chapter-item-active {
-        @apply bg-primary/10 text-primary font-medium;
-      }
-      .loop-option {
-        @apply px-2 py-1 rounded text-sm hover:bg-primary/10 transition-colors;
-      }
-      .loop-option-active {
-        @apply bg-primary text-white;
-      }
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f9fafb; min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 16px; text-align: center; }
+    h1 { color: #1f2937; font-size: 24px; font-weight: 600; }
+    main { flex: 1; display: flex; flex-direction: column; }
+    .chapter-container { display: none; position: fixed; top: 0; left: 0; bottom: 0; width: 240px; background: white; border-right: 1px solid #e5e7eb; padding: 16px; overflow-y: auto; z-index: 10; }
+    .chapter-container.show { display: block; }
+    .chapter-title { font-size: 18px; font-weight: 500; color: #4b5563; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .chapter-list { list-style: none; }
+    .chapter-item { padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; cursor: pointer; transition: background 0.2s; }
+    .chapter-item:hover { background: #eff6ff; }
+    .chapter-item.active { background: #dbeafe; color: #2563eb; font-weight: 500; }
+    .word-card { max-width: 500px; width: 90%; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 24px; text-align: center; }
+    .current-word { font-size: 36px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+    .current-pronunciation { color: #6b7280; font-style: italic; font-size: 18px; margin-bottom: 16px; }
+    .current-meaning { color: #4b5563; font-size: 16px; }
+    footer { background: white; box-shadow: 0 -2px 4px rgba(0,0,0,0.05); padding: 12px; }
+    .controls { max-width: 600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+    .control-btn { width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s; }
+    .control-btn:active { transform: scale(0.9); }
+    .play-btn { background: #2563eb; color: white; }
+    .nav-btn { background: #f3f4f6; color: #4b5563; }
+    .loop-controls { display: flex; align-items: center; gap: 8px; }
+    .loop-text { font-size: 14px; color: #6b7280; }
+    .loop-options { display: flex; gap: 4px; }
+    .loop-option { padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s; }
+    .loop-option.active { background: #2563eb; color: white; }
+    .loop-option:not(.active):hover { background: #eff6ff; }
+    .mobile-loop-btn { background: #f3f4f6; color: #4b5563; }
+    .mobile-loop-options { display: none; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px; z-index: 5; }
+    .mobile-loop-options.show { display: block; }
+    @media (min-width: 768px) {
+      main { flex-direction: row; }
+      .chapter-container { display: block; position: static; }
+      .close-chapter-btn, .mobile-loop-btn { display: none; }
     }
   </style>
+  <link href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
-  <!-- 顶部标题 -->
-  <header class="bg-white shadow-sm py-4 px-6">
-    <h1 class="text-center text-xl md:text-2xl font-bold text-gray-800">单词朗读者</h1>
+<body>
+  <header>
+    <h1>单词朗读者</h1>
   </header>
 
-  <!-- 主内容区 -->
-  <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
-    <!-- 章节列表 (PC端默认隐藏，点击展开) -->
-    <div id="chapterContainer" class="hidden md:block md:w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-gray-700">章节列表</h2>
-        <button id="closeChapterBtn" class="md:hidden text-gray-500 hover:text-gray-700">
+  <main>
+    <div id="chapterContainer" class="chapter-container">
+      <div class="chapter-title">
+        <span>章节列表</span>
+        <button id="closeChapterBtn" class="close-chapter-btn">
           <i class="fa fa-times"></i>
         </button>
       </div>
-      <ul id="chapterList" class="space-y-1"></ul>
+      <ul id="chapterList" class="chapter-list"></ul>
     </div>
 
-    <!-- 单词展示区 -->
-    <div class="flex-1 flex flex-col items-center justify-center p-6 md:p-10 overflow-y-auto">
-      <div id="wordCard" class="w-full max-w-md bg-white rounded-xl shadow-md p-8 md:p-10 text-center">
-        <h3 id="currentWord" class="text-3xl md:text-4xl font-bold text-gray-800 mb-2"></h3>
-        <p id="currentPronunciation" class="text-gray-500 italic text-lg md:text-xl mb-4"></p>
-        <p id="currentMeaning" class="text-gray-700 text-base md:text-lg"></p>
+    <div class="word-display">
+      <div id="wordCard" class="word-card">
+        <h3 id="currentWord" class="current-word"></h3>
+        <p id="currentPronunciation" class="current-pronunciation"></p>
+        <p id="currentMeaning" class="current-meaning"></p>
       </div>
     </div>
   </main>
 
-  <!-- 底部控制栏 -->
-  <footer class="bg-white shadow-inner py-3 px-4 md:py-4">
-    <div class="flex items-center justify-between max-w-3xl mx-auto">
-      <!-- 章节按钮 (移动端) -->
-      <button id="chapterBtn" class="md:hidden control-btn bg-gray-100 text-gray-700">
+  <footer>
+    <div class="controls">
+      <button id="chapterBtn" class="control-btn nav-btn">
         <i class="fa fa-list"></i>
       </button>
       
-      <!-- 播放控制区 -->
-      <div class="flex items-center space-x-2 md:space-x-4">
-        <button id="prevBtn" class="control-btn bg-gray-100 text-gray-700">
+      <div class="play-controls">
+        <button id="prevBtn" class="control-btn nav-btn">
           <i class="fa fa-step-backward"></i>
         </button>
-        <button id="playPauseBtn" class="control-btn bg-primary text-white">
+        <button id="playPauseBtn" class="control-btn play-btn">
           <i class="fa fa-play"></i>
         </button>
-        <button id="nextBtn" class="control-btn bg-gray-100 text-gray-700">
+        <button id="nextBtn" class="control-btn nav-btn">
           <i class="fa fa-step-forward"></i>
         </button>
       </div>
       
-      <!-- 循环控制区 -->
-      <div class="hidden md:flex items-center space-x-1">
-        <span class="text-sm text-gray-600">循环:</span>
-        <div id="loopOptions" class="flex space-x-1">
-          <span class="loop-option loop-option-active" data-count="1">1次</span>
+      <div class="loop-controls desktop-loop">
+        <span class="loop-text">循环:</span>
+        <div id="loopOptions" class="loop-options">
+          <span class="loop-option active" data-count="1">1次</span>
           <span class="loop-option" data-count="3">3次</span>
           <span class="loop-option" data-count="6">6次</span>
           <span class="loop-option" data-count="12">12次</span>
@@ -112,16 +98,14 @@
         </div>
       </div>
       
-      <!-- 移动端循环按钮 -->
-      <button id="mobileLoopBtn" class="md:hidden control-btn bg-gray-100 text-gray-700">
+      <button id="mobileLoopBtn" class="control-btn mobile-loop-btn">
         <i class="fa fa-repeat"></i>
       </button>
     </div>
     
-    <!-- 移动端循环选项 (默认隐藏) -->
-    <div id="mobileLoopOptions" class="hidden md:hidden absolute bottom-20 left-0 right-0 bg-white shadow-lg rounded-t-xl p-4 mx-4">
-      <div class="flex flex-wrap justify-center gap-2">
-        <span class="loop-option loop-option-active" data-count="1">1次</span>
+    <div id="mobileLoopOptions" class="mobile-loop-options">
+      <div class="loop-options">
+        <span class="loop-option active" data-count="1">1次</span>
         <span class="loop-option" data-count="3">3次</span>
         <span class="loop-option" data-count="6">6次</span>
         <span class="loop-option" data-count="12">12次</span>
@@ -131,170 +115,120 @@
   </footer>
 
   <script>
-    // 单词数据 (开发者可在此修改/扩展)
     const wordData = [
       {
         "chapter": "第一章：基础词汇",
         "words": [
-          {
-            "word": "apple",
-            "pronunciation": "/ˈæpl/",
-            "meaning": "n. 苹果"
-          },
-          {
-            "word": "banana",
-            "pronunciation": "/bəˈnɑːnə/",
-            "meaning": "n. 香蕉"
-          },
-          {
-            "word": "cat",
-            "pronunciation": "/kæt/",
-            "meaning": "n. 猫"
-          },
-          {
-            "word": "dog",
-            "pronunciation": "/dɒɡ/",
-            "meaning": "n. 狗"
-          }
+          { "word": "apple", "pronunciation": "/ˈæpl/", "meaning": "n. 苹果" },
+          { "word": "banana", "pronunciation": "/bəˈnɑːnə/", "meaning": "n. 香蕉" },
+          { "word": "cat", "pronunciation": "/kæt/", "meaning": "n. 猫" },
+          { "word": "dog", "pronunciation": "/dɒɡ/", "meaning": "n. 狗" }
         ]
       },
       {
         "chapter": "第二章：进阶词汇",
         "words": [
-          {
-            "word": "abandon",
-            "pronunciation": "/əˈbændən/",
-            "meaning": "v. 放弃；抛弃"
-          },
-          {
-            "word": "ability",
-            "pronunciation": "/əˈbɪləti/",
-            "meaning": "n. 能力；才能"
-          },
-          {
-            "word": "achieve",
-            "pronunciation": "/əˈtʃiːv/",
-            "meaning": "v. 达到；完成"
-          }
+          { "word": "abandon", "pronunciation": "/əˈbændən/", "meaning": "v. 放弃；抛弃" },
+          { "word": "ability", "pronunciation": "/əˈbɪləti/", "meaning": "n. 能力；才能" },
+          { "word": "achieve", "pronunciation": "/əˈtʃiːv/", "meaning": "v. 达到；完成" }
         ]
       }
     ];
 
-    // 百度API配置 (请替换为你的实际密钥)
-    const BAIDU_APP_ID = "7188781";
-    const BAIDU_API_KEY = "pqNGmCN9YR0daPq9LZTuzNlx";
-    const BAIDU_SECRET_KEY = "kIYbNPqs8w43QS78dohlLVqmesxf1Yyg";
-
-    // 全局状态管理
     const state = {
       currentChapterIndex: 0,
       currentWordIndex: 0,
       isPlaying: false,
       loopCount: 1,
       currentLoop: 0,
-      accessToken: null,
-      audioCache: new Map(), // 缓存音频URL
-      audioElement: new Audio()
+      speechSynthesis: window.speechSynthesis,
+      currentUtterance: null
     };
 
-    // DOM元素
+    const $ = (id) => document.getElementById(id);
     const elements = {
-      chapterList: document.getElementById('chapterList'),
-      chapterContainer: document.getElementById('chapterContainer'),
-      chapterBtn: document.getElementById('chapterBtn'),
-      closeChapterBtn: document.getElementById('closeChapterBtn'),
-      currentWord: document.getElementById('currentWord'),
-      currentPronunciation: document.getElementById('currentPronunciation'),
-      currentMeaning: document.getElementById('currentMeaning'),
-      playPauseBtn: document.getElementById('playPauseBtn'),
-      prevBtn: document.getElementById('prevBtn'),
-      nextBtn: document.getElementById('nextBtn'),
-      loopOptions: document.getElementById('loopOptions'),
-      mobileLoopBtn: document.getElementById('mobileLoopBtn'),
-      mobileLoopOptions: document.getElementById('mobileLoopOptions')
+      chapterList: $('chapterList'),
+      chapterContainer: $('chapterContainer'),
+      chapterBtn: $('chapterBtn'),
+      closeChapterBtn: $('closeChapterBtn'),
+      currentWord: $('currentWord'),
+      currentPronunciation: $('currentPronunciation'),
+      currentMeaning: $('currentMeaning'),
+      playPauseBtn: $('playPauseBtn'),
+      prevBtn: $('prevBtn'),
+      nextBtn: $('nextBtn'),
+      loopOptions: $('loopOptions'),
+      mobileLoopBtn: $('mobileLoopBtn'),
+      mobileLoopOptions: $('mobileLoopOptions')
     };
 
-    // 初始化
-    async function init() {
+    function init() {
       renderChapters();
       renderCurrentWord();
-      await getAccessToken();
       setupEventListeners();
-      setupAudioListener();
     }
 
-    // 渲染章节列表
     function renderChapters() {
       elements.chapterList.innerHTML = '';
       wordData.forEach((chapter, index) => {
         const li = document.createElement('li');
-        li.className = `chapter-item ${index === state.currentChapterIndex ? 'chapter-item-active' : ''}`;
+        li.className = `chapter-item ${index === state.currentChapterIndex ? 'active' : ''}`;
         li.textContent = chapter.chapter;
         li.addEventListener('click', () => {
           state.currentChapterIndex = index;
           state.currentWordIndex = 0;
           renderChapters();
           renderCurrentWord();
-          elements.chapterContainer.classList.add('hidden');
+          elements.chapterContainer.classList.remove('show');
         });
         elements.chapterList.appendChild(li);
       });
     }
 
-    // 渲染当前单词
     function renderCurrentWord() {
       const currentChapter = wordData[state.currentChapterIndex];
       const currentWord = currentChapter.words[state.currentWordIndex];
-      
       elements.currentWord.textContent = currentWord.word;
       elements.currentPronunciation.textContent = currentWord.pronunciation;
       elements.currentMeaning.textContent = currentWord.meaning;
     }
 
-    // 获取百度API访问令牌
-    async function getAccessToken() {
-      try {
-        const response = await fetch(`https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${BAIDU_API_KEY}&client_secret=${BAIDU_SECRET_KEY}`);
-        const data = await response.json();
-        state.accessToken = data.access_token;
-      } catch (error) {
-        console.error('获取访问令牌失败:', error);
-        alert('初始化失败，请刷新页面重试');
-      }
-    }
-
-    // 合成语音并播放
-    async function synthesizeAndPlay() {
-      if (!state.accessToken) return;
-
-      const currentWord = wordData[state.currentChapterIndex].words[state.currentWordIndex].word;
-      
-      // 检查缓存
-      if (state.audioCache.has(currentWord)) {
-        playAudio(state.audioCache.get(currentWord));
+    // 使用Web Speech API合成并播放
+    function synthesizeAndPlay() {
+      if (!state.speechSynthesis) {
+        alert('您的浏览器不支持语音合成功能');
         return;
       }
 
-      try {
-        // 调用百度语音合成API
-        const response = await fetch(`https://tsn.baidu.com/text2audio?tex=${encodeURIComponent(currentWord)}&lan=en&cuid=${BAIDU_APP_ID}&ctp=1&tok=${state.accessToken}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        });
+      const currentWord = wordData[state.currentChapterIndex].words[state.currentWordIndex].word;
 
-        if (!response.ok) throw new Error('语音合成失败');
+      try {
+        // 取消之前的播放
+        state.speechSynthesis.cancel();
         
-        // 将音频转为Blob URL并缓存
-        const blob = await response.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        state.audioCache.set(currentWord, audioUrl);
+        // 创建语音合成实例
+        const utterance = new SpeechSynthesisUtterance(currentWord);
+        utterance.lang = 'en-US'; // 英语发音
+        utterance.rate = 0.9; // 语速
+        utterance.volume = 1; // 音量
+
+        // 语音合成结束事件
+        utterance.onend = () => {
+          state.currentLoop++;
+          if (state.currentLoop < state.loopCount) {
+            // 继续循环当前单词
+            state.speechSynthesis.speak(utterance);
+          } else {
+            // 循环完成，播放下一个
+            playNextWord();
+          }
+        };
+
+        // 保存当前语音实例
+        state.currentUtterance = utterance;
         
-        // 预加载下一个单词的音频
-        preloadNextAudio();
-        
-        playAudio(audioUrl);
+        // 开始播放
+        state.speechSynthesis.speak(utterance);
       } catch (error) {
         console.error('语音合成错误:', error);
         alert('语音合成失败，请重试');
@@ -302,46 +236,6 @@
       }
     }
 
-    // 播放音频
-    function playAudio(audioUrl) {
-      state.audioElement.src = audioUrl;
-      state.audioElement.play().catch(err => {
-        console.error('播放失败:', err);
-        // 处理需要用户交互的情况
-        alert('请点击播放按钮开始朗读');
-        stopPlayback();
-      });
-    }
-
-    // 预加载下一个单词的音频
-    async function preloadNextAudio() {
-      const currentChapter = wordData[state.currentChapterIndex];
-      let nextWordIndex = state.currentWordIndex + 1;
-      let nextChapterIndex = state.currentChapterIndex;
-
-      // 处理章节切换
-      if (nextWordIndex >= currentChapter.words.length) {
-        nextWordIndex = 0;
-        nextChapterIndex = state.currentChapterIndex + 1;
-        if (nextChapterIndex >= wordData.length) nextChapterIndex = 0; // 最后一章循环到第一章
-      }
-
-      const nextWord = wordData[nextChapterIndex].words[nextWordIndex].word;
-      if (!state.audioCache.has(nextWord) && state.accessToken) {
-        try {
-          const response = await fetch(`https://tsn.baidu.com/text2audio?tex=${encodeURIComponent(nextWord)}&lan=en&cuid=${BAIDU_APP_ID}&ctp=1&tok=${state.accessToken}`);
-          if (response.ok) {
-            const blob = await response.blob();
-            const audioUrl = URL.createObjectURL(blob);
-            state.audioCache.set(nextWord, audioUrl);
-          }
-        } catch (error) {
-          console.error('预加载音频失败:', error);
-        }
-      }
-    }
-
-    // 开始播放
     function startPlayback() {
       if (state.isPlaying) return;
       
@@ -351,73 +245,51 @@
       synthesizeAndPlay();
     }
 
-    // 停止播放
     function stopPlayback() {
       state.isPlaying = false;
       elements.playPauseBtn.innerHTML = '<i class="fa fa-play"></i>';
-      state.audioElement.pause();
+      
+      // 停止当前播放
+      if (state.speechSynthesis) {
+        state.speechSynthesis.cancel();
+      }
+      state.currentUtterance = null;
     }
 
-    // 播放下一个单词
     function playNextWord() {
       const currentChapter = wordData[state.currentChapterIndex];
+      state.currentWordIndex = (state.currentWordIndex + 1) % currentChapter.words.length;
       
-      // 检查是否需要切换到下一个单词
-      state.currentWordIndex++;
-      if (state.currentWordIndex >= currentChapter.words.length) {
-        state.currentWordIndex = 0;
-        state.currentChapterIndex++;
-        // 检查是否需要循环到第一章
-        if (state.currentChapterIndex >= wordData.length) {
-          state.currentChapterIndex = 0;
-        }
-        renderChapters(); // 更新章节选中状态
+      if (state.currentWordIndex === 0) {
+        state.currentChapterIndex = (state.currentChapterIndex + 1) % wordData.length;
+        renderChapters();
       }
       
       renderCurrentWord();
       state.currentLoop = 0;
+      
       if (state.isPlaying) {
         synthesizeAndPlay();
       }
     }
 
-    // 播放上一个单词
     function playPrevWord() {
-      state.currentWordIndex--;
+      const currentChapter = wordData[state.currentChapterIndex];
+      state.currentWordIndex = (state.currentWordIndex - 1 + currentChapter.words.length) % currentChapter.words.length;
       
-      // 检查是否需要切换到上一个章节
-      if (state.currentWordIndex < 0) {
-        state.currentChapterIndex--;
-        if (state.currentChapterIndex < 0) {
-          state.currentChapterIndex = wordData.length - 1;
-        }
-        const prevChapter = wordData[state.currentChapterIndex];
-        state.currentWordIndex = prevChapter.words.length - 1;
-        renderChapters(); // 更新章节选中状态
+      if (state.currentWordIndex === currentChapter.words.length - 1) {
+        state.currentChapterIndex = (state.currentChapterIndex - 1 + wordData.length) % wordData.length;
+        renderChapters();
       }
       
       renderCurrentWord();
       state.currentLoop = 0;
+      
       if (state.isPlaying) {
         synthesizeAndPlay();
       }
     }
 
-    // 设置音频事件监听
-    function setupAudioListener() {
-      state.audioElement.addEventListener('ended', () => {
-        state.currentLoop++;
-        if (state.currentLoop < state.loopCount) {
-          // 继续循环当前单词
-          state.audioElement.play();
-        } else {
-          // 循环完成，播放下一个
-          playNextWord();
-        }
-      });
-    }
-
-    // 设置事件监听
     function setupEventListeners() {
       // 播放/暂停按钮
       elements.playPauseBtn.addEventListener('click', () => {
@@ -432,56 +304,36 @@
       elements.prevBtn.addEventListener('click', playPrevWord);
       elements.nextBtn.addEventListener('click', playNextWord);
 
-      // 章节切换 (移动端)
+      // 章节切换
       elements.chapterBtn.addEventListener('click', () => {
-        elements.chapterContainer.classList.remove('hidden');
+        elements.chapterContainer.classList.add('show');
       });
       
       elements.closeChapterBtn.addEventListener('click', () => {
-        elements.chapterContainer.classList.add('hidden');
+        elements.chapterContainer.classList.remove('show');
       });
 
-      // 循环次数选择 (PC端)
-      elements.loopOptions.querySelectorAll('.loop-option').forEach(option => {
+      // 循环次数选择
+      const loopOptions = [...elements.loopOptions.querySelectorAll('.loop-option'), ...elements.mobileLoopOptions.querySelectorAll('.loop-option')];
+      loopOptions.forEach(option => {
         option.addEventListener('click', (e) => {
-          elements.loopOptions.querySelectorAll('.loop-option').forEach(o => 
-            o.classList.remove('loop-option-active')
-          );
-          e.target.classList.add('loop-option-active');
+          loopOptions.forEach(o => o.classList.remove('active'));
+          e.target.classList.add('active');
           state.loopCount = parseInt(e.target.dataset.count);
+          elements.mobileLoopOptions.classList.remove('show');
         });
       });
 
-      // 循环次数选择 (移动端)
+      // 移动端循环按钮
       elements.mobileLoopBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        elements.mobileLoopOptions.classList.toggle('hidden');
-      });
-
-      elements.mobileLoopOptions.querySelectorAll('.loop-option').forEach(option => {
-        option.addEventListener('click', (e) => {
-          elements.mobileLoopOptions.querySelectorAll('.loop-option').forEach(o => 
-            o.classList.remove('loop-option-active')
-          );
-          e.target.classList.add('loop-option-active');
-          state.loopCount = parseInt(e.target.dataset.count);
-          elements.mobileLoopOptions.classList.add('hidden');
-        });
+        elements.mobileLoopOptions.classList.toggle('show');
       });
 
       // 点击空白处关闭移动端循环选项
       document.addEventListener('click', (e) => {
-        if (!elements.mobileLoopBtn.contains(e.target) && 
-            !elements.mobileLoopOptions.contains(e.target)) {
-          elements.mobileLoopOptions.classList.add('hidden');
-        }
-      });
-
-      // 页面 visibility 变化时处理
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && state.isPlaying) {
-          // 页面重新可见时确保播放状态正确
-          elements.playPauseBtn.innerHTML = '<i class="fa fa-pause"></i>';
+        if (!elements.mobileLoopBtn.contains(e.target) && !elements.mobileLoopOptions.contains(e.target)) {
+          elements.mobileLoopOptions.classList.remove('show');
         }
       });
     }
